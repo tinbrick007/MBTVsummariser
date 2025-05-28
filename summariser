@@ -1,0 +1,147 @@
+# prompt: code to take youtube video links  from a csv file in runtime and download caption through API and pass it on to grok LLM through its API to get some insights out of it
+!pip install youtube-transcript-api
+!pip install groq
+!pip install openai
+
+
+from youtube_transcript_api import YouTubeTranscriptApi
+from openai import OpenAI
+import os
+
+import csv
+from urllib.parse import urlparse, parse_qs
+
+
+
+
+def convert_dict_to_document(data_dict, filename="output_document.txt"):
+  """
+  Converts a Python dictionary into a simple text document.
+
+  Args:
+    data_dict: The dictionary to convert.
+    filename: The name of the output file.
+  """
+  with open(filename, 'w', encoding='utf-8') as f:
+    for key, value in data_dict.items():
+      f.write(f"--- {key} ---\n")
+      f.write(f"{value}\n\n")
+  print(f"Document created: {filename}")
+
+
+
+# Function to extract video ID from a YouTube link
+def extract_video_id(youtube_url):
+    """Extracts the video ID from a YouTube URL."""
+    try:
+        url_data = urlparse(youtube_url)
+        if url_data.hostname == 'youtu.be':
+            return url_data.path[1:]
+        elif url_data.hostname in ('www.youtube.com', 'youtube.com'):
+            query = parse_qs(url_data.query)
+            return query.get('v', [None])[0]
+        else:
+            return None
+    except Exception as e:
+        print(f"Error extracting video ID from {youtube_url}: {e}")
+        return None
+
+# Replace 'your_youtube_links.csv' with the actual path to your CSV file
+csv_file_path = 'youtube.csv'
+myinsights = {}
+# Assuming the CSV has one column with YouTube links
+try:
+    with open(csv_file_path, mode='r', encoding='utf-8') as csvfile:
+        csv_reader = csv.reader(csvfile)
+        # Skip header row if present
+        # next(csv_reader)
+
+        for row in csv_reader:
+            if row: # Check if the row is not empty
+                youtube_link = row[0].strip() # Assuming the link is in the first column
+                if youtube_link:
+                    print(f"\nProcessing link: {youtube_link}")
+                    video_id = extract_video_id(youtube_link)
+
+                    if video_id:
+                        transcript = get_youtube_transcript(video_id)
+                        if transcript:
+                            print("Transcript fetched successfully. Getting insights from Groq...")
+                            insights = get_grok_insights(transcript)
+                            myinsights[video_id]=insights
+                            print("Insights from Groq:")
+                            #print(insights)
+                        else:
+                            print("Skipping Groq analysis due to missing transcript.")
+                    else:
+                        print("Could not extract video ID from the link.")
+            else:
+                print("Skipping empty row.")
+
+except FileNotFoundError:
+    print(f"Error: The file '{csv_file_path}' was not found.")
+except Exception as e:
+    print(f"Error reading CSV file: {e}")
+
+
+
+# Replace with your Groq API key
+# You can get one from https://console.groq.com/keys
+API_KEY = 'xai-vikB5twp4LqLyqOoB25NzF8Qn8yWIZg5OlyO4xIgut7uK66cVZQuvacmSpUdSvS55lRvApmFPLVyv0VB'
+# Replace with the Groq model you want to use, e.g., "llama3-8b-8192" or "llama3-70b-8192"
+GROQ_MODEL = 'grok-3-mini-beta'
+
+client = OpenAI(api_key=API_KEY, base_url="https://api.x.ai/v1")
+
+def get_youtube_transcript(video_id):
+  """Fetches the transcript for a given YouTube video ID."""
+  try:
+    transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+    transcript = ' '.join([entry['text'] for entry in transcript_list])
+    return transcript
+  except Exception as e:
+    print(f"Could not fetch transcript for video ID {video_id}: {e}")
+    return None
+
+def get_grok_insights(transcript):
+  """Sends the transcript to the Groq API for insights."""
+  if transcript is None:
+    return "No transcript available to analyze."
+
+  try:
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": """
+                You are a smart YouTube transcript summarizer. Your job is to read the full transcript of a video and return:
+
+        1. A short summary of the overall video (5-6 sentences).
+        2. Bullet-pointed highlights of key takeaways, structured and concise.
+        3. (Optional) Timestamps if they are included in the transcript.
+
+        Guidelines:
+        - Focus on clarity and information value such as numbers and statistics mentioned.
+        - Ignore filler, repetition, or casual phrases.
+        - Highlight important ideas, tips, steps, or arguments.
+        - If the transcript is long, break it into parts and summarize each before merging.
+
+        If the transcript is very short, just extract the key ideas directly.
+
+        NEVER summarize the YouTube title or guess content — only work from the transcript provided.
+            """
+            },
+            {
+                "role": "user",
+                "content": "Give me the summary of this transcript given: " + " "+transcript,
+            }
+        ],
+        model=GROQ_MODEL,
+        temperature=0.1 # Adjust max tokens as needed
+    )
+    return chat_completion.choices[0].message.content
+  except Exception as e:
+    print(f"Error calling Groq API: {e}")
+    return "Could not get insights from Groq."
+
+convert_dict_to_document(myinsights, "youtube_insights.txt")
