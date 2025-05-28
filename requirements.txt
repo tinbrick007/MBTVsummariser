@@ -1,0 +1,6 @@
+streamlit
+yt-dlp
+requests
+browser-cookie3
+pandas
+urlib-parse
