@@ -13,7 +13,7 @@ import pandas as pd
 SUBSCRIPTION_KEY = os.getenv("AZURE_SUBSCRIPTION_KEY")
 LOCATION         = os.getenv("AZURE_LOCATION", "trial")
 ACCOUNT_ID       = os.getenv("AZURE_ACCOUNT_ID")
-
+DOWNLOAD_FOLDER = "videos"
 for var in ("AZURE_SUBSCRIPTION_KEY","AZURE_ACCOUNT_ID"):
     if not os.getenv(var):
         st.error(f"Missing environment variable: {var}")
@@ -28,10 +28,10 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 def download_youtube_video(youtube_url: str) -> str:
     ydl_opts = {
-        "format": "mp4",
+        "format": "18",
         "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
         "merge_output_format": "mp4",
-        "cookiesfrombrowser": ("chrome",),
+        "cookiesfrombrowser": ("chrome",None),
         "quiet": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
