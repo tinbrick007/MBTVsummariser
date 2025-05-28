@@ -1,3 +1,5 @@
+st.set_page_config(page_title="Video Insights", layout="wide")
+
 import os
 import json
 import time
@@ -86,7 +88,7 @@ def fetch_insights(video_id: str, access_token: str) -> dict:
     return resp.json()
 
 # === STREAMLIT UI ===
-st.set_page_config(page_title="Video Insights", layout="wide")
+
 st.title("Azure Video Indexer Insights")
 
 # Input
