@@ -3,4 +3,8 @@ yt-dlp
 requests
 browser-cookie3
 pandas
-urlib-parse
+youtube-transcript-api
+groq
+openai
+requests
+pytube
