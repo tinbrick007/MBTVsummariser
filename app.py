@@ -1,4 +1,3 @@
-st.set_page_config(page_title="Video Insights", layout="wide")
 
 import os
 import json
@@ -21,8 +20,7 @@ for var in ("AZURE_SUBSCRIPTION_KEY","AZURE_ACCOUNT_ID"):
         st.error(f"Missing environment variable: {var}")
         st.stop()
 
-
-
+st.set_page_config(page_title="Video Insights", layout="wide")
 
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
